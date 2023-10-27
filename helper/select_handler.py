@@ -1,16 +1,22 @@
 from tldextract import extract
 
 from handler.bunkr_handler import exec_bunkr
+from handler.imgur_handler import exec_imgur
 
 async def handler_selector(message,context):
-    
+    """ Given a link find the correct site in question
+    and call the proprer function to get the media in question
+    """
     url = str(message.text)
     ext = extract(url)
-    
-    match ext.domain:
+    site_name = ext.domain
+
+    match site_name:
         case "bunkrr":
             await exec_bunkr(message,context,url)
+        case "imgur":
+            await exec_imgur(message,url)
         case default:
-            print("Site not supported")
+            print(f"{ext.domain} not supported")
 
     
