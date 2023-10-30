@@ -1,6 +1,8 @@
-from telegram import Update, InputMediaPhoto
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram import Update, InputMediaPhoto, Bot
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ApplicationBuilder
 from decouple import config
+
+import asyncio
 
 from helper.select_handler import handler_selector
 
@@ -45,16 +47,17 @@ async def links(update,context):
 
     
 def main():
-    # Create the app and give it the bot token
-    app = Application.builder().token(bot_token).build()
+    # Create the app and give it the bot token, now it run in a local server
+    app = Application.builder().token(bot_token).base_url("http://0.0.0.0:8081/bot").read_timeout(600).write_timeout(600).build()
 
-    # ----------- HANDLER ----------------
+    # # ----------- HANDLER ----------------
     app.add_handler(CommandHandler("help",help_handler))
     app.add_handler(MessageHandler(filters.Entity('url'),links))
     #app.add_handler(CommandHandler("test",test))
     
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 if __name__ == "__main__":
     main()

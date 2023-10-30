@@ -15,3 +15,18 @@ async def get_text(url):
     """
     site_request = requests.get(url)
     return site_request.content
+
+def get_max_size(directory):
+    """Given a directory it give back 
+    the dimension of the bigger file in 
+    byte
+    """
+    max_size = 0
+
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(root, file)
+            file_size = os.path.getsize(file_path)
+            if file_size > max_size:
+                max_size = file_size
+    return max_size
