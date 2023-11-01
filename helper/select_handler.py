@@ -18,7 +18,7 @@ async def handler_selector(message,context):
         case "imgur":
             await exec_imgur(message,url)
         case "magnet":
-            await exec_torrent(message,url)
+            await exec_torrent(message,context.bot,url)
         case default:
             print(f"[{message.chat_id}] {ext.domain} request")
             await message.reply_text(f"{ext.domain} not supported")
