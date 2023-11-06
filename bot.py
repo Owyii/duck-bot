@@ -1,6 +1,7 @@
 from telegram import Update, InputMediaPhoto, Bot
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ApplicationBuilder
 from decouple import config
+from handler.torrent_handler import stop_running_torrent
 
 import asyncio
 
@@ -12,6 +13,10 @@ bot_token = config("BOT_TOKEN")
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Help!")
+
+async def stop_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    await stop_running_torrent(message)
 
 async def links(update,context):
     message = update.message
@@ -52,11 +57,15 @@ def main():
 
     # # ----------- HANDLER ----------------
     app.add_handler(CommandHandler("help",help_handler))
+    app.add_handler(CommandHandler("Stop",stop_handler))
     app.add_handler(MessageHandler(filters.Entity('url'),links))
     #app.add_handler(CommandHandler("test",test))
     
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+    loop = asyncio.get_event_loop()
+    loop.run_forever()
 
 
 if __name__ == "__main__":
