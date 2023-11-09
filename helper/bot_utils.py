@@ -3,6 +3,9 @@ import requests
 from urllib.parse import urlparse
 
 def get_img_info(href):
+    """ Given a link to a media it give back
+    the name without extension and the extension
+    """
     parsed_url = urlparse(href)
     path = parsed_url.path
     filename = os.path.basename(path)
@@ -30,3 +33,14 @@ def get_max_size(directory):
             if file_size > max_size:
                 max_size = file_size
     return max_size
+
+async def download_content(session,path):
+    """ The method will try to dowload any bunkr file
+    """
+    print(f"[DOWNLOAD_CONTENT]{path}")
+    try: 
+        open(path,"wb").write(session.content)
+        return True 
+    except Exception as e:
+        print(f"Exception on writing {e}")
+        return False

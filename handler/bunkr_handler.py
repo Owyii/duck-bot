@@ -1,130 +1,118 @@
-import requests
-import shutil
-import os 
-from helper.bot_utils import get_max_size
-from helper.bunkr_helper import bunkr_scraper
+from requests import Session
+from bs4 import BeautifulSoup
+import os
+from helper.bot_utils import get_img_info, get_max_size,download_content
 
-from telegram import InputMediaPhoto, InputMediaDocument
-
+# Remove https warnings
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-session = requests.Session()
+BASE_URL = "https://bunkrr.su"
 
-FOTO_EXT = ['.jpg', '.png',".jpeg",".webp",".gif",".svg",".ico",".raw" ]
+async def process_bunkr_url(urls):
+    """ Given a list of bunkr link give back
+    a dict with the links as the keys and the estensions
+    of the file as the values
+    """ 
+    url_dict = {}
+    #TODO im not sure if i want to create another session here
+    s = Session()
+    for url in urls:
+        site_request = s.get(url)
+        # TODO check if the request crash
+        soup = BeautifulSoup(site_request.content,"html.parser")
+
+        for link in soup.find_all("a"):
+            href = link.get("href")
+            if len(href) > 30:
+                if("/report" not in href and "?download" not in href):
+                    _,extension = get_img_info(href)
+                    url_dict[href] = extension
+    del s
+    return url_dict
+
+class BunkrManager:
+    def __init__(self,message,url):
+        self.message = message
+        self.chat_id = str(message.chat.id)
+        self.message_id = message.id
+        self.url = url
+        self.session = self.get_session(url)
+    
+    # TODO should be a global method (maybe)
+    async def write(self,message_string):
+        await self.message.reply_text(message_string)
+        print(f"[{self.chat_id}] {message_string}")
+
+    def get_session(self,url,complete=False):
+        session = Session()
+        if(complete):
+            r = session.get(url,
+                            allow_redirects= True, verify=False,
+                            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
+                            )
+        else:
+            r = session.get(url)
+
+        if r.status_code == 403:
+            self.write("Use proxy")
+            return None
+        else:
+            return r
+        
+    def get_link(self):
+        links = []
+        if("/a/" in self.url):
+            soup = BeautifulSoup(self.session.content,"html.parser")
+            for link in soup.find_all("a"):
+                href = link.get("href")
+                # TODO can album have only images?
+                if("/i/" in href):
+                    links.append(BASE_URL + href)
+        else:
+            links.append(self.url)
+        return links
+    
+    async def get_content(self,url_dict):
+        """ For now it dowload the file 
+        because saving 10 photo in ram doesnt seem
+        a great idea
+        """
+        file_count = 0
+        for file_url in url_dict.keys():
+            session = self.get_session(file_url,True)
+            if(session):
+                # I am passing the local path to the dowload folder specific to a user
+                download_result = await download_content(session,f"{self.chat_id}/{file_count}{url_dict[file_url]}")
+                if(not download_result):
+                    self.write("Error during download")
+            else:
+                print("Cannot connect to session")
+            
+            file_count += 1
 
 async def exec_bunkr(message,context,url):
-
-    chat_id = str(message.chat.id)
-    msg_id = message.id
-
-    await message.reply_text("Processing link...")
-
-    r = session.get(url)
-    if r.status_code == 403:
-        print("*** Use Proxy ***")
-
-    # TODO here is where i divide album from photo
     
-    # if the connection is possible i get all the link that i need to dowload
-    # from that page
-    else:
-        print(f"[{chat_id}] start scraping  {url}")
-        url_dict = await bunkr_scraper(url)
-        print(f"[{chat_id}] finished scraping: {len(url_dict)} links")
-        await message.reply_text(f"{len(url_dict)} file found! Working...")
+    bunkr_manager = BunkrManager(message,url)
+    await bunkr_manager.write("Processing Bunkr link")
 
+    if(bunkr_manager.session):
+        await bunkr_manager.write("Session ok")
 
-        file_count = 0
-        os.mkdir(str(chat_id))
+        # there are 2 different possibilities:
+        # > Single file
+        # > Album
+        # For now i put all the possible link ( 1 or many)
+        # In a list/dict to iterate later
+        url_to_process = bunkr_manager.get_link()
+        await bunkr_manager.write(f"{len(url_to_process)} link found")
 
-        #download every file
-        for elem_url in url_dict.keys():
-            extension = url_dict[elem_url]
-            response = session.get(elem_url,
-                                   allow_redirects= True, verify=False,
-                                   headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
-                                   )
-            print(f"[{chat_id}] {elem_url} - {response.status_code}")
-            try:
-                open(f"{chat_id}/{file_count}.{extension}","wb").write(response.content)                
+        # Processing link -> getting the exact link to the file
+        url_dict = await process_bunkr_url(url_to_process)
+        await bunkr_manager.write(f"{len(url_dict)} link processed")
 
-            except Exception as e:
-                print(e)
-            
-            file_count+=1
+        if not os.path.isdir(bunkr_manager.chat_id):
+            os.mkdir(bunkr_manager.chat_id)
 
-        # check max dimension of file 
-        # so i wont send img that are too big
-        big_files = False
-        max_size = get_max_size(str(chat_id))
-        print(f"[{chat_id}] requested {max_size} byte")
-        if (max_size > 20000000):
-            big_files = True
-            await message.reply_text(f"The file exceed the limit given by telegram, expect slowdown")
-
-        # Just one file, nothing much to do
-        # I keep them separated because the are .zip
-        # TODO just one function for one or more file
-        if(file_count == 1):
-
-            first_elem = next(iter(url_dict))
-            first_elem_ext = url_dict[first_elem]
-
-            if(not big_files and first_elem_ext in FOTO_EXT ):
-                try:
-                    await context.bot.send_photo(chat_id = chat_id, photo = open(f"{chat_id}/0.{first_elem_ext}","rb"),write_timeout=60)
-                    print("Sent")
-
-                except Exception as e:
-                    await message.reply_text(f"Error: {e}")
-                    print(e)
-            else:      
-                try:
-                    await context.bot.send_document(chat_id = chat_id, document = open(f"{chat_id}/0.{first_elem_ext}","rb"), write_timeout=60)
-                    print("Sent")
-
-                except Exception as e:
-                    await message.reply_text(f"Error: {e}")
-                    print(e)
- 
-        # More file = I have an album 
-        # there are two kind of album based on 
-        # dimension
-        else:            
-            media_group = []
-            element_limiter = 10
-            for filename in os.listdir(str(chat_id)):
-
-                current_file = chat_id + "/" + filename
-                if(big_files):
-                    media_group.append(InputMediaDocument(open(current_file,'rb')))
-                else:
-                    media_group.append(InputMediaPhoto(open(current_file,'rb')))
-                element_limiter-= 1
-
-                # Max size of space for telegram album
-                if(element_limiter == 0):
-                    try:
-                        await context.bot.send_media_group(chat_id = chat_id, media=media_group,write_timeout=None)
-                        print("Sent")
-
-                    except Exception as e:
-                        await message.reply_text(f"Error: {e}")
-                        print(e)
-                    element_limiter = 10
-                    media_group.clear()
-
-            # If have some leftover img 
-            # TODO check if really necessary
-            if(element_limiter < 10):
-                try:
-                    await context.bot.send_media_group(chat_id = chat_id, media=media_group,write_timeout=60)
-                    print("Sent")
-
-                except Exception as e:
-                    await message.reply_text(f"Error: {e}")
-                    print(e)
-
-        shutil.rmtree(chat_id)
-    pass
+        # Dowloading and uploading photo
+        await bunkr_manager.get_content(url_dict)

@@ -21,35 +21,6 @@ async def stop_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def links(update,context):
     message = update.message
     await handler_selector(message,context)
-
-# async def test(update,context):
-#     chat_id = str(247121519)
-
-#     media_group = []
-#     element_limiter = 10
-#     for filename in os.listdir(chat_id):
-#         current_file = chat_id + "/" + filename
-#         media_group.append(InputMediaPhoto(open(current_file,'rb')))
-#         element_limiter-= 1 
-
-#         if(element_limiter == 0):
-#             try:
-#                 await context.bot.send_media_group(chat_id = chat_id, media=media_group)
-#                 print("Sent")
-
-#             except Exception as e:
-#                 print(e)
-#             element_limiter = 10
-#             media_group.clear()
-
-#     if(element_limiter < 10):
-#         try:
-#             await context.bot.send_media_group(chat_id = chat_id, media=media_group)
-#             print("Sent")
-
-#         except Exception as e:
-#             print(e)
-
     
 def main():
     # Create the app and give it the bot token, now it run in a local server
@@ -59,14 +30,12 @@ def main():
     app.add_handler(CommandHandler("help",help_handler))
     app.add_handler(CommandHandler("Stop",stop_handler))
     app.add_handler(MessageHandler(filters.Entity('url'),links))
-    #app.add_handler(CommandHandler("test",test))
-    
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
+    # Separate thread to get real time status update
     loop = asyncio.get_event_loop()
     loop.run_forever()
-
 
 if __name__ == "__main__":
     main()

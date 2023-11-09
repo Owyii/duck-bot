@@ -3,9 +3,7 @@ import os
 from transmission_rpc import Client
 import time
 import asyncio
-
-#other lib 
-import libtorrent as lt
+from decouple import config
 
 # check if the torrent is currently working    
 def is_running(torrent):
@@ -23,24 +21,20 @@ def get_info(torrent):
     return f'{progress:.2f}% complete (down: {download_rate:.1f} kB/s) {state}'
 
 class Torrentmanager:
-    torrent_client_api = Client(host="localhost", port=9091, username="",password="")
 
-    def __init__(self):
+    def __init__(self,host,port,username,password):
         self.active_dowloads = {}
         self.status_task = {}
+        self.torrent_client_api = Client(host=host, port=port, username=username,password=password)
 
     def start_download(self, user_id, magent_link):
         torrent_dl_path = os.path.join(os.getcwd(),user_id)
         self.active_dowloads[user_id] = self.torrent_client_api.add_torrent(magent_link,download_dir=f"{torrent_dl_path}")
-
-    def stop_download(self, user_id):
-        if user_id in self.active_dowloads:
-            # Delete the torrent
-            del self.active_dowloads[user_id]
     
     def remove_download(self, user_id):
         self.torrent_client_api.remove_torrent(self.active_dowloads[user_id].id)
         del self.active_dowloads[user_id]
+        
 
     def get_torrent(self,user_id):
         if user_id in self.active_dowloads:
@@ -81,8 +75,9 @@ class Torrentmanager:
 
         await asyncio.sleep(2)
 
-        
-torrent_manager = Torrentmanager()
+daemon_user = config("TRANSMISSION_USER")
+daemon_password = config("TRANSMISSION_PASSWORD")    
+torrent_manager = Torrentmanager("localhost",9091,daemon_user,daemon_password)
 
 async def exec_torrent(message,bot,url):
 
@@ -98,8 +93,10 @@ async def exec_torrent(message,bot,url):
 async def stop_running_torrent(message):
     chat_id = str(message.chat.id)
     torrent = torrent_manager.get_torrent(chat_id)
+
     if torrent:
         torrent_manager.remove_download(chat_id)
+
         await message.reply_text("Torrent Removed")
     else:
         await message.reply_text("No active torrent")
