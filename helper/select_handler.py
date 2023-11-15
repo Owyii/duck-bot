@@ -2,7 +2,7 @@ from tldextract import extract
 
 from handler.bunkr_handler import exec_bunkr
 from handler.imgur_handler import exec_imgur
-from handler.torrent_handler import exec_torrent
+#from handler.torrent_handler import exec_torrent
 
 async def handler_selector(message,context):
     """ Given a link find the correct site in question
@@ -17,8 +17,8 @@ async def handler_selector(message,context):
             await exec_bunkr(message,context,url)
         case "imgur":
             await exec_imgur(message,url)
-        case "magnet":
-            await exec_torrent(message,context.bot,url)
+        # case "magnet":
+        #     await exec_torrent(message,context.bot,url)
         case default:
             print(f"[{message.chat_id}] {ext.domain} request")
             await message.reply_text(f"{ext.domain} not supported")

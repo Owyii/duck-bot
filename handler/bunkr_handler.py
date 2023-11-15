@@ -1,7 +1,12 @@
 from requests import Session
 from bs4 import BeautifulSoup
+from shutil import rmtree
+from time import sleep
+import asyncio
 import os
+from pyrogram.types import InputMediaPhoto,InputMediaDocument
 from helper.bot_utils import get_img_info, get_max_size,download_content
+
 
 # Remove https warnings
 import urllib3
@@ -73,23 +78,53 @@ class BunkrManager:
             links.append(self.url)
         return links
     
-    async def get_content(self,url_dict):
+    # TODO think about is worth removing also file while sending
+    # TODO file? hello?
+    async def get_contents(self,url_dict,bot):
         """ For now it dowload the file 
         because saving 10 photo in ram doesnt seem
         a great idea
         """
+        # For now i keep tracking of the task i create, and will wait for all
+        # of them to finish to complete the function, this is because i want to start
+        # sending img BEFORE i dowloaded everything
+        tasks = []
+
+        media_group = []
         file_count = 0
         for file_url in url_dict.keys():
             session = self.get_session(file_url,True)
             if(session):
                 # I am passing the local path to the dowload folder specific to a user
-                download_result = await download_content(session,f"{self.chat_id}/{file_count}{url_dict[file_url]}")
+                current_file = f"{self.chat_id}/{file_count}{url_dict[file_url]}"
+                download_result = await download_content(session,current_file)
+                
                 if(not download_result):
                     self.write("Error during download")
+                else:
+                    if(os.path.getsize(current_file) < 20000000):
+                        media_group.append(InputMediaPhoto(open(current_file,'rb')))
+                    else:
+                        media_group.append(InputMediaDocument(open(current_file,'rb')))
+                    file_count += 1
             else:
                 print("Cannot connect to session")
             
-            file_count += 1
+            if(file_count == 3):
+                print("[LOG] Sending?")
+                tasks.append(asyncio.create_task(bot.send_media_group(chat_id = self.chat_id,media=media_group.copy())))
+                # Just to be safe
+                await asyncio.sleep(5)
+                media_group.clear()
+                file_count = 0
+
+        # Senting the remaining file (if they are present)
+        if(len(media_group) > 0):
+            tasks.append(asyncio.create_task(bot.send_media_group(chat_id = self.chat_id,media=media_group)))
+
+        rmtree(self.chat_id)
+
+        await asyncio.wait(tasks)
 
 async def exec_bunkr(message,context,url):
     
@@ -115,4 +150,4 @@ async def exec_bunkr(message,context,url):
             os.mkdir(bunkr_manager.chat_id)
 
         # Dowloading and uploading photo
-        await bunkr_manager.get_content(url_dict)
+        await bunkr_manager.get_contents(url_dict,context)
