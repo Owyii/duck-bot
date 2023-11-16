@@ -1,5 +1,6 @@
 import os
 import importlib.util
+from helper.base_plugin import BasePlugin
 
 class PluginManager:
     def __init__(self,plugin_folder='./plugins'):
@@ -9,14 +10,18 @@ class PluginManager:
     def _load_plugins(self):
         print("[INFO] Loading Plugin...")
         plugins = []
+        plugin_counter = 0
         for file_name in os.listdir(self.plugins_folder):
-            if file_name.endswith('.py') and not file_name.startswith('__init__'):
+            if file_name.endswith('.py') and not file_name.startswith('_'):
                 # Is important that the name of the module is also the name of the file
                 module_name = file_name[:-3]
                 spec = importlib.util.spec_from_file_location(module_name, os.path.join(self.plugins_folder,file_name))
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
 
+                # Eventually you can add here some code to inspect the content
+                # of the .py file (for example check if the class is a base plugin) 
+                # For now we assuming class name is the same as the module name
                 for name in dir(module):
                     item = getattr(module, name)
                     if (
@@ -25,8 +30,17 @@ class PluginManager:
                         item is not BasePlugin
                     ):
                         plugins.append(item())
+                        plugin_counter += 1
+
+        print(f"[INFO] Loaded {plugin_counter} plugins")
         return plugins
     
     def get_supported_plugin(self,link):
         for plugin in self.plugins:
-            if plugin.is_
+            if plugin.is_supported(link):
+                return plugin
+        return None
+    
+    def test_supported_plugin(self):
+        for plugin in self.plugins:
+            plugin.test()

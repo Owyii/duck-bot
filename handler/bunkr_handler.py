@@ -1,7 +1,6 @@
 from requests import Session
 from bs4 import BeautifulSoup
 from shutil import rmtree
-from time import sleep
 import asyncio
 import os
 from pyrogram.types import InputMediaPhoto,InputMediaDocument
