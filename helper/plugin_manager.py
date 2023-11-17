@@ -42,5 +42,13 @@ class PluginManager:
         return None
     
     def test_supported_plugin(self):
+        """ The function is just use to check if all the plugin are
+        implemented, nothing more
+        """
         for plugin in self.plugins:
-            plugin.test()
+            try:
+                obj = plugin(None,None)
+                print(f"[TEST] {obj.name} plugin is implemented correctly")
+            except TypeError as e:
+                print(f"[TEST] {e}")
+                

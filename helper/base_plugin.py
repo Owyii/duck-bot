@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 """ This is the father class for the bot's plugin. 
 Follow the requirement stated to implement another site/services
 all these method MUST be implemented to work and to maintain 
@@ -17,10 +19,12 @@ The bot now will receive imput from the users
         6. I upload the file to the user chat (optional)
         7. Remove the file locally 
 
-A template for the plugin Class is located in plugins/_plugin.py
+The abstract class are used so these Method MUST be implemented.
 """
 
-class BasePlugin:
+class BasePlugin(ABC):
+
+    @abstractmethod
     def __init__(self,bot,chat_id,message=None):
         """ Those are the minimum paramethers to make a plugin
         download something and post it in a chat with a user. 
@@ -29,18 +33,21 @@ class BasePlugin:
         self.chat_id = chat_id
         self.message = message
 
+    @abstractmethod
     def is_supported(link):
         """ Given a link retrun true if the plugin support that link 
         and will operate, false is not
         """
         raise NotImplementedError("Subclasses must implement this method")
     
+    @abstractmethod
     def test(self):
         """ Simple test function, just print something to know if the plugin
         is working or not 
         """
         raise NotImplementedError("Subclasses must implement this method")
     
+    @abstractmethod
     def process_link(self,master_link):
         """ Given the master link of a page the function should return a 
         dict with the real links to the content as the key and the extension
@@ -51,6 +58,7 @@ class BasePlugin:
         """
         raise NotImplementedError("Subclasses must implement this method")
     
+    @abstractmethod
     def get_content(self,content_dict):
         """ Given the content_dict this method will: 
         1. Download the file 

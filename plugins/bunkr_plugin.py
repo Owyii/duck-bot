@@ -3,6 +3,7 @@ from helper.base_plugin import BasePlugin
 class BunkrPlugin(BasePlugin):
     def __init__(self, bot, chat_id, message=None):
         super().__init__(bot, chat_id, message)
+        self.name = "Bunkr"
 
     def test():
         print("[BUNKR] test function")
