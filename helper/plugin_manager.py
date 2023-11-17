@@ -29,7 +29,7 @@ class PluginManager:
                         issubclass(item, BasePlugin) and
                         item is not BasePlugin
                     ):
-                        plugins.append(item())
+                        plugins.append(item)
                         plugin_counter += 1
 
         print(f"[INFO] Loaded {plugin_counter} plugins")
