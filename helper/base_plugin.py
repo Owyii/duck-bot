@@ -28,10 +28,12 @@ class BasePlugin(ABC):
     def __init__(self,bot,chat_id,message=None):
         """ Those are the minimum paramethers to make a plugin
         download something and post it in a chat with a user. 
+        Remember to put a self.name with the name of the plugin.
         """
         self.bot = bot
-        self.chat_id = chat_id
+        self.chat_id = str(chat_id)
         self.message = message
+        self.header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
 
     @abstractmethod
     def is_supported(link):
@@ -39,14 +41,7 @@ class BasePlugin(ABC):
         and will operate, false is not
         """
         raise NotImplementedError("Subclasses must implement this method")
-    
-    @abstractmethod
-    def test(self):
-        """ Simple test function, just print something to know if the plugin
-        is working or not 
-        """
-        raise NotImplementedError("Subclasses must implement this method")
-    
+        
     @abstractmethod
     def process_link(self,master_link):
         """ Given the master link of a page the function should return a 
@@ -73,3 +68,7 @@ class BasePlugin(ABC):
         that limit with an asynchronous function.
         """
         raise NotImplementedError("Subclasses must implement this method")
+    
+    async def Write(self,message_string):
+        await self.bot.send_message(chat_id = self.chat_id, text = message_string)
+        print(f"[{self.chat_id}] {message_string}")

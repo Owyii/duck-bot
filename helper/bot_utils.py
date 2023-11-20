@@ -2,7 +2,7 @@ import os
 import requests
 from urllib.parse import urlparse
 
-def get_img_info(href):
+def get_file_info(href):
     """ Given a link to a media it give back
     the name without extension and the extension
     """
@@ -34,7 +34,7 @@ def get_max_size(directory):
                 max_size = file_size
     return max_size
 
-async def download_content(session,path):
+def download_content(session,path):
     """ The method will try to dowload any bunkr file
     """
     print(f"[DOWNLOAD_CONTENT]{path}")

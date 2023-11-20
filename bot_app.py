@@ -19,6 +19,7 @@ app = Client(
 
 plugin_manager = PluginManager()
 
+
 # --------------------- TEST ------------------------------
 @app.on_message(filters.command("help"))
 def send_help(bot,message):
@@ -30,12 +31,20 @@ def send_help(bot,message):
 async def links(bot,message):
     link = message.text
     chat_id = message.chat.id
+    print(f"[{chat_id}] requested {link}")
     supported_plugin = plugin_manager.get_supported_plugin(link)
 
     if supported_plugin:
         await bot.send_message(chat_id = chat_id, text = "Plugin is selected")
+        operator = supported_plugin(bot,chat_id,message)
+        urldict = await operator.process_link(link)
+        await operator.get_content(urldict)
     else:
         await bot.send_message(chat_id = chat_id, text = "Sorry, this link is not supported.")
 
 if __name__ == "__main__":
-    asyncio.run(app.run())
+    # The bot can only start if all the plugin are valid
+    if(plugin_manager.test_supported_plugin()):
+        asyncio.run(app.run())  	
+    else:
+        print(f"[ERR] Cannot start Bot")

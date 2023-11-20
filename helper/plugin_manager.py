@@ -45,10 +45,13 @@ class PluginManager:
         """ The function is just use to check if all the plugin are
         implemented, nothing more
         """
+        valid_istance = True
         for plugin in self.plugins:
             try:
                 obj = plugin(None,None)
                 print(f"[TEST] {obj.name} plugin is implemented correctly")
             except TypeError as e:
                 print(f"[TEST] {e}")
+                valid_istance = False
+        return valid_istance
                 
