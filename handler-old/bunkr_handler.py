@@ -4,7 +4,7 @@ from shutil import rmtree
 import asyncio
 import os
 from pyrogram.types import InputMediaPhoto,InputMediaDocument
-from helper.bot_utils import get_img_info, get_max_size,download_content
+from utils.bot_utils import get_img_info, get_max_size,download_content
 
 
 # Remove https warnings

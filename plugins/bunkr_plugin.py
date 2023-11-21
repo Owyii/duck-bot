@@ -4,7 +4,7 @@ from requests import Session
 import os
 from shutil import rmtree
 from pyrogram.types import InputMediaPhoto,InputMediaDocument
-from helper.bot_utils import get_file_info, download_content
+from utils.bot_utils import get_file_info, download_content
 import asyncio
 
 import urllib3
