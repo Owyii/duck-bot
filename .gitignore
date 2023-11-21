@@ -166,3 +166,4 @@ cython_debug/
 # All that have test
 test*.*
 image.*
+log*
