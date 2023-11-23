@@ -1,4 +1,10 @@
 from abc import ABC, abstractmethod
+import os
+import io
+from pyrogram.types import InputMediaPhoto,InputMediaDocument
+from PIL import Image
+from shutil import rmtree
+import asyncio
 
 """ This is the father class for the bot's plugin. 
 Follow the requirement stated to implement another site/services
@@ -72,3 +78,56 @@ class BasePlugin(ABC):
     async def Write(self,message_string):
         await self.bot.send_message(chat_id = self.chat_id, text = message_string)
         print(f"[{self.chat_id}] {message_string}")
+
+    async def progress(self,current, total):
+        print(f"{current * 100 / total:.1f}%")
+
+
+    # Method is ugly, will refactor
+    async def send_content(self):
+        img_extension = [".png",'.jpg','.jpeg']
+        video_extension = [".mov",".mp4"]
+        media_group = []
+        tasks = []
+
+        for filename in  os.listdir(self.chat_id):
+
+
+            filepath = os.path.join(self.chat_id,filename)
+            _, ext = os.path.splitext(filepath)
+
+            # if the file is a zip i guess i have to do something
+            if(ext == ".zip"):
+                tasks.append(asyncio.create_task(self.bot.send_document(chat_id=self.chat_id,document=open(filepath,'rb'))))
+            
+            # if it is an img
+            elif(ext in img_extension):
+
+                # PIL is used to fix the size problem, 
+                img = Image.open(filepath)
+                if(img.width > 1280 or img.height > 1280):
+                    img.thumbnail((1280,1280))
+
+                output = io.BytesIO()
+                format_img = 'PNG' if ext=='.png' else 'JPEG'
+                img.save(output, format=format_img)
+                media_group.append(InputMediaPhoto(output))
+
+            elif(ext in video_extension):
+                tasks.append(asyncio.create_task(self.bot.send_video(chat_id=self.chat_id,video=open(filepath,'rb'))))
+
+            # if it is a file
+            else:
+                tasks.append(asyncio.create_task(self.bot.send_document(chat_id=self.chat_id,document=open(filepath,'rb'),progress=self.progress)))
+
+            #check if i have to send the album
+            if(len(media_group) % 10 == 0):
+                tasks.append(asyncio.create_task(self.bot.send_media_group(chat_id = self.chat_id,media=media_group.copy())))
+                media_group.clear()
+
+            await asyncio.sleep(1)
+
+        tasks.append(asyncio.create_task(self.bot.send_media_group(chat_id = self.chat_id,media=media_group)))
+        await asyncio.gather(*tasks)
+        rmtree(self.chat_id)
+        await self.Write("Upload completed")

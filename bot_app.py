@@ -39,6 +39,7 @@ async def links(bot,message):
         operator = supported_plugin(bot,chat_id,message)
         urldict = await operator.process_link(link)
         await operator.get_content(urldict)
+        await operator.send_content()
     else:
         await bot.send_message(chat_id = chat_id, text = "Sorry, this link is not supported.")
 

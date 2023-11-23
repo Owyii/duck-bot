@@ -71,12 +71,7 @@ class BunkrPlugin(BasePlugin):
         if not os.path.isdir(self.chat_id):
             os.mkdir(self.chat_id)
 
-        # For now i keep tracking of the task i create, and will wait for all
-        # of them to finish to complete the function, this is because i want to start
-        # sending img BEFORE i dowloaded everything
-        tasks = []
-
-        media_group = []
+        error = 0
         file_count = 0
         session = Session()
         message = await self.bot.send_message(chat_id=self.chat_id, text="Downloading content...")
@@ -88,32 +83,20 @@ class BunkrPlugin(BasePlugin):
                 current_file = f"{self.chat_id}/{file_count}{content_dict[file_url]}"
                 download_result = download_content(specific_url_request,current_file)
 
-                # If i want some logic for when i cant download
-                if(download_result):
-                    if(os.path.getsize(current_file) < 10000000):
-                        media_group.append(InputMediaPhoto(open(current_file,'rb')))
-                    else:
-                        media_group.append(InputMediaDocument(open(current_file,'rb')))
-                    file_count += 1
-                    tasks.append(asyncio.create_task(self.bot.edit_message_text(chat_id=self.chat_id, message_id = message.id, text=f"Dowloaded {file_count}/{len(content_dict)}")))
+                # Updating counting
+                file_count += 1
+                if(not download_result):
+                    error+=1
 
-                    if(file_count % 10 == 0):
-                        tasks.append(asyncio.create_task(self.bot.send_media_group(chat_id = self.chat_id,media=media_group.copy())))
-                        # Just to be safe
-                        media_group.clear()
+                await self.bot.edit_message_text(chat_id=self.chat_id, message_id = message.id, text=f"Dowloaded {file_count}/{len(content_dict)} {error} errori")
+                
             else:
                 print(f"[CHECK] NOT ok for {file_url}")
 
             # Introduce a delay of 1 second without blocking the event loop
+            # An for safety
             await asyncio.sleep(1)
 
-
-        # Senting the remaining file (if they are present)
-        if(len(media_group) > 0):
-            tasks.append(asyncio.create_task(self.bot.send_media_group(chat_id = self.chat_id,media=media_group)))
-
-        rmtree(self.chat_id)
-        await asyncio.gather(*tasks)
         await super().Write("Finished dowloading")
 
 
