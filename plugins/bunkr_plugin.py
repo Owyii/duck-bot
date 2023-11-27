@@ -6,6 +6,7 @@ from shutil import rmtree
 from pyrogram.types import InputMediaPhoto,InputMediaDocument
 from utils.bot_utils import get_file_info, download_content
 import asyncio
+import aiofiles
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -50,8 +51,11 @@ class BunkrPlugin(BasePlugin):
                         href = link.get("href")
                         if len(href) > 30:
                             if("/report" not in href and "?download" not in href):
-                                _,extension = get_file_info(href)
-                                url_dict[href] = extension
+                                name,extension = get_file_info(href)
+                                url_dict[href] = {
+                                    "ext":extension,
+                                    "name":name
+                                }
             del r
             await super().Write(f"Parsed {len(url_dict)} links")
             return url_dict
@@ -60,13 +64,13 @@ class BunkrPlugin(BasePlugin):
         else:
             await super().Write(f"Link not valid, exit code: {r.status_code}")
     
-    # TODO think about is worth removing also file while sending
-    # TODO file? hello?
     async def get_content(self, content_dict):
         """ For now it dowload the file 
         because saving 10 photo in ram doesnt seem
         a great idea
         """
+        print(f"[{self.chat_id}] Get content")
+        self.dowloading = True
 
         if not os.path.isdir(self.chat_id):
             os.mkdir(self.chat_id)
@@ -76,28 +80,38 @@ class BunkrPlugin(BasePlugin):
         session = Session()
         message = await self.bot.send_message(chat_id=self.chat_id, text="Downloading content...")
         for file_url in content_dict.keys():
-            specific_url_request = session.get(file_url,
-                                               allow_redirects= True, verify=False,
-                                               headers=self.header)
-            if(specific_url_request.status_code == 200):
-                current_file = f"{self.chat_id}/{file_count}{content_dict[file_url]}"
-                download_result = download_content(specific_url_request,current_file)
+            file_information = content_dict[file_url]
+            with session.get(file_url,
+                            allow_redirects= True, verify=False,
+                            headers=self.header,stream=True) as specific_url_request:
+                if(specific_url_request.status_code == 200):
+                    current_file = f"{self.chat_id}/{file_information['name']}{file_information['ext']}"
+                    #download_result = await download_content(specific_url_request,current_file)
 
-                # Updating counting
-                file_count += 1
-                if(not download_result):
-                    error+=1
+                    #dowload splitted in chunksize
+                    download_result = False
+                    print(f"[DOWNLOAD_CONTENT]{current_file}")
+                    try: 
+                        async with aiofiles.open(current_file,"wb") as file:
+                            for chunk in specific_url_request.iter_content(chunk_size=8192):
+                                await file.write(chunk)
+                            download_result = True
+                    except Exception as e:
+                        print(f"Exception on writing {e}")
 
-                await self.bot.edit_message_text(chat_id=self.chat_id, message_id = message.id, text=f"Dowloaded {file_count}/{len(content_dict)} {error} errori")
-                
-            else:
-                print(f"[CHECK] NOT ok for {file_url}")
+                    # Updating counting
+                    file_count += 1
+                    if(not download_result):
+                        error+=1
 
-            # Introduce a delay of 1 second without blocking the event loop
-            # An for safety
+                    await self.bot.edit_message_text(chat_id=self.chat_id, message_id = message.id, text=f"Dowloaded {file_count}/{len(content_dict)} {error} errori")
+                    
+                else:
+                    print(f"[CHECK] NOT ok for {file_url}")
+
+                # Introduce a delay of 1 second without blocking the event loop
+                # An for safety
             await asyncio.sleep(1)
 
-        await super().Write("Finished dowloading")
-
-
-    
+        self.dowloading = False
+        await super().Write("Finished dowloading")    

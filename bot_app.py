@@ -10,7 +10,6 @@ bot_token = config("BOT_TOKEN")
 
 URL_PATTERN = "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$"
 
-
 app = Client(
     "duck_bot",
     api_id=api_id,
@@ -38,8 +37,10 @@ async def links(bot,message):
         await bot.send_message(chat_id = chat_id, text = "Plugin is selected")
         operator = supported_plugin(bot,chat_id,message)
         urldict = await operator.process_link(link)
-        await operator.get_content(urldict)
-        await operator.send_content()
+        await asyncio.gather(
+            operator.get_content(urldict),
+            operator.deamon_sender()
+        )
     else:
         await bot.send_message(chat_id = chat_id, text = "Sorry, this link is not supported.")
 

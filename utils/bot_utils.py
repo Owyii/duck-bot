@@ -1,6 +1,7 @@
 import os
 import requests
 from urllib.parse import urlparse
+import aiofiles
 
 def get_file_info(href):
     """ Given a link to a media it give back
@@ -34,12 +35,13 @@ def get_max_size(directory):
                 max_size = file_size
     return max_size
 
-def download_content(session,path):
+async def download_content(session,path):
     """ The method will try to dowload any bunkr file
     """
     print(f"[DOWNLOAD_CONTENT]{path}")
     try: 
-        open(path,"wb").write(session.content)
+        async with aiofiles.open(path,"wb") as file:
+            await file.write(session.content)
         return True 
     except Exception as e:
         print(f"Exception on writing {e}")
