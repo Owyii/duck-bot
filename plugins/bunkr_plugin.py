@@ -79,6 +79,7 @@ class BunkrPlugin(BasePlugin):
         file_count = 0
         session = Session()
         message = await self.bot.send_message(chat_id=self.chat_id, text="Downloading content...")
+        
         for file_url in content_dict.keys():
             file_information = content_dict[file_url]
             with session.get(file_url,
@@ -91,11 +92,16 @@ class BunkrPlugin(BasePlugin):
                     #dowload splitted in chunksize
                     download_result = False
                     print(f"[DOWNLOAD_CONTENT]{current_file}")
+
+                    # Since there is the possibility that the user ask for .zip file (300mb+ file)
+                    # i need to dowload in chunk to not fill up the ram since write will allocate 
+                    # the memory before and then write on disk
                     try: 
                         async with aiofiles.open(current_file,"wb") as file:
                             for chunk in specific_url_request.iter_content(chunk_size=8192):
                                 await file.write(chunk)
                             download_result = True
+                            await self.upload_queue.put(current_file)
                     except Exception as e:
                         print(f"Exception on writing {e}")
 
@@ -114,4 +120,5 @@ class BunkrPlugin(BasePlugin):
             await asyncio.sleep(1)
 
         self.dowloading = False
+        await self.upload_queue.put(None)
         await super().Write("Finished dowloading")    

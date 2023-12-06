@@ -43,6 +43,7 @@ class BasePlugin(ABC):
         self.message = message
         self.dowloading = False
         self.header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
+        self.upload_queue = asyncio.Queue()
 
     @abstractmethod
     def is_supported(link):
@@ -154,51 +155,54 @@ class BasePlugin(ABC):
         The function is a basic one that is planned to work with the majority of the site,
         if need overload this function in the specific plugin.
         """
-        await asyncio.sleep(3)
+
         print(f"[{self.chat_id}] Daemon Sender")
+
         # Some information on how to treat different type of file
         img_extension = [".png",'.jpg','.jpeg']
         video_extension = [".mov",".mp4"]
         media_group = []
 
-        # First check, to see if I'm currently dowloading something
-        while self.dowloading or len(os.listdir(self.chat_id)) > 0:
-            # Second check, to iterate all the element in the folder
-            for file_name in  os.listdir(self.chat_id):
+        # The check is in the cycle
+        while True:
 
-                file_path = os.path.join(self.chat_id,file_name)
-                _, ext = os.path.splitext(file_path)
+            # Get the element to upload from the queue
+            file_name = await self.upload_queue.get()
+            if file_name is None:
+                break
 
-                # Img are the most common i think
-                if(ext in img_extension):
-                    # PIL is used to fix the size problem, 
-                    img = Image.open(file_path)
-                    if(img.width > 1280 or img.height > 1280):
-                        img.thumbnail((1280,1280))
+            _, ext = os.path.splitext(file_name)
 
-                    output = io.BytesIO()
-                    format_img = 'PNG' if ext=='.png' else 'JPEG'
-                    img.save(output, format=format_img)
-                    media_group.append(InputMediaPhoto(output))   
-                
-                # Other filetype
+            # Img are the most common i think
+            if(ext in img_extension):
+                # PIL is used to fix the size problem, 
+                img = Image.open(file_name)
+                if(img.width > 1280 or img.height > 1280):
+                    img.thumbnail((1280,1280))
+
+                output = io.BytesIO()
+                format_img = 'PNG' if ext=='.png' else 'JPEG'
+                img.save(output, format=format_img)
+                media_group.append(InputMediaPhoto(output))
+            
+            # Other filetype
+            else:
+                if(ext == ".zip"):
+                    # HERE IF I WANT TO DO SOMETHING WITH .zip
+                    await self.bot.send_document(chat_id=self.chat_id,document=file_name)              
+                elif(ext in video_extension):
+                    await self.bot.send_video(chat_id=self.chat_id,video=open(file_name,'rb'))
                 else:
-                    if(ext == ".zip"):
-                        # HERE IF I WANT TO DO SOMETHING WITH .zip
-                        await self.bot.send_document(chat_id=self.chat_id,document=open(file_path,'rb'))              
-                    elif(ext in video_extension):
-                        await self.bot.send_video(chat_id=self.chat_id,video=open(file_path,'rb'))
-                    else:
-                        await self.bot.send_document(chat_id=self.chat_id,document=open(file_path,'rb'))
-                    
-                if(len(media_group) % 10 == 0):
-                    print(f"[{self.chat_id}] sending 10...")
-                    await self.bot.send_media_group(chat_id = self.chat_id,media=media_group.copy())
-                    media_group.clear()
+                    await self.bot.send_document(chat_id=self.chat_id,document=file_name)
+                
+            if(len(media_group) % 10 == 0):
+                print(f"[{self.chat_id}] sending 10...")
+                await self.bot.send_media_group(chat_id = self.chat_id,media=media_group.copy())
+                media_group.clear()
 
-                # Removing the file every time to not have useless thing in disk
-                await asyncio.sleep(1)
-                await remove(file_path)
+            # Removing the file every time to not have useless thing in disk
+            await asyncio.sleep(1)
+            await remove(file_name)
 
         print(f"[{self.chat_id}] Missing {len(media_group)}")
         await self.bot.send_media_group(chat_id = self.chat_id,media=media_group)

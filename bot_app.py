@@ -47,6 +47,7 @@ async def links(bot,message):
 if __name__ == "__main__":
     # The bot can only start if all the plugin are valid
     if(plugin_manager.test_supported_plugin()):
-        asyncio.run(app.run())  	
+        asyncio.run(app.run())  
+        print(f"[INFO] App Running")	
     else:
         print(f"[ERR] Cannot start Bot")
