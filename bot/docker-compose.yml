@@ -1,11 +1,9 @@
 services:
   app:
     build: .
+    container_name: telegram-bot
     ports:
       - "${APP_PORT}:5000"
     volumes:
-      - .:/app
-    environment:
-      - FLASK_APP=app.py
-      - FLASK_ENV=${FLASK_ENV}
+      - ./app:/app/app
     command: flask run --host=0.0.0.0 --port=5000 --reload
