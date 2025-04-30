@@ -1,26 +1,22 @@
 version: '3.8'
 
 services:
-  bot:
+  telegram_bot:
     build: ./bot
-    container_name: telegram-bot
-    ports:
-      - "5000:5000"
+    command: flask run --host=0.0.0.0 --port=5000 --reload
     volumes:
       - ./bot/app:/app/app
-    environment:
-      FLASK_ENV: development
-    command: flask run --host=0.0.0.0 --port=5000 --reload
-    depends_on:
-      - card_monitor
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./bot/.env.dev
 
   card_monitor:
     build: ./services/card_monitor_app
-    container_name: card_monitor
+    command: flask run --host=0.0.0.0 --port=5000 --reload
     ports:
       - "5001:5000"
     volumes:
       - ./services/card_monitor_app/app:/app/app
-    environment:
-      FLASK_ENV: development
-    command: flask run --host=0.0.0.0 --port=5000 --reload
+    env_file:
+      - ./services/card_monitor_app/.env.dev
